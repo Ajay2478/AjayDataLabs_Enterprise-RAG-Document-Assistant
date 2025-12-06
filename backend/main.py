@@ -90,7 +90,7 @@ async def ask_question(request: QueryRequest):
     try:
         # Load the DB
         db = FAISS.load_local(DB_FAISS_PATH, embeddings, allow_dangerous_deserialization=True)
-        retriever = db.as_retriever(search_kwargs={'k': 3})
+        retriever = db.as_retriever(search_kwargs={'k': 7})
 
         # WEEK 5 UPDATED PROMPT: Multilingual & Citations
         prompt = ChatPromptTemplate.from_template("""
