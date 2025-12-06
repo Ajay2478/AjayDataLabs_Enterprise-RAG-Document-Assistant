@@ -36,10 +36,10 @@ function App() {
     formData.append("file", selectedFile);
 
     try {
-      await axios.post("http://127.0.0.1:8000/upload", formData, {
+      await axios.post("ai-pdf-rag-production.up.railway.app/upload", formData, {
         headers: { "Content-Type": "multipart/form-data" },
       });
-      setPdfUrl(`http://127.0.0.1:8000/static/${selectedFile.name}?t=${Date.now()}`);
+      setPdfUrl(`ai-pdf-rag-production.up.railway.app/static/${selectedFile.name}?t=${Date.now()}`);
       setMessages(prev => [...prev, { type: 'ai', text: `I've read ${selectedFile.name}. Ask me anything!` }]);
     } catch (error) {
       setMessages(prev => [...prev, { type: 'ai', text: "Error uploading file. Check Backend." }]);
@@ -64,7 +64,7 @@ function App() {
     setThinking(true);
 
     try {
-      const res = await axios.post("http://127.0.0.1:8000/query", { question: textToSend });
+      const res = await axios.post("ai-pdf-rag-production.up.railway.app/query", { question: textToSend });
       setMessages(prev => [...prev, { type: 'ai', text: res.data.answer }]);
     } catch (error) {
       setMessages(prev => [...prev, { type: 'ai', text: "Error: Could not get answer." }]);
