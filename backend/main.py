@@ -114,8 +114,8 @@ async def summarize_document():
         return {"summary": summary}
 
     except Exception as e:
-        # If no DB exists yet
-        return {"summary": "No document uploaded yet to summarize."}
+        # If DB not found
+        return {"answer": "Please upload a document first so I can answer your questions!"}
 
 @app.post("/query")
 async def ask_question(request: QueryRequest):
@@ -162,5 +162,5 @@ async def ask_question(request: QueryRequest):
         return {"answer": final_answer}
 
     except Exception as e:
-        # This handles technical errors (like DB not found)
-        return {"answer": "Please upload a document first so I can answer your questions!"}
+        # RETURN THE REAL ERROR
+        return {"answer": f"SYSTEM ERROR: {str(e)}"}

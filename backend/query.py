@@ -1,4 +1,3 @@
-
 import os
 from dotenv import load_dotenv
 from langchain_huggingface import HuggingFaceEmbeddings
@@ -18,6 +17,7 @@ if not api_key:
 
 # 2. Setup Memory (Vector DB)
 DB_FAISS_PATH = "vectorstore/db_faiss"
+# Using the same embeddings as your ingestion (likely HuggingFace if running locally)
 embeddings = HuggingFaceEmbeddings(model_name="sentence-transformers/all-MiniLM-L6-v2")
 
 print("--- Loading Vector DB ---")
@@ -27,21 +27,30 @@ except Exception as e:
     print(f"Error loading DB: {e}")
     exit()
 
-# 3. Setup Brain (UPDATED FOR DEC 2025)
-# Using 'gemini-2.5-flash' which replaced the 1.5 series
-llm = ChatGoogleGenerativeAI(model="gemini-2.5-flash", google_api_key=api_key)
+# 3. Setup Brain
+llm = ChatGoogleGenerativeAI(model="gemini-1.5-flash", google_api_key=api_key)
 
 # 4. Define Helper
 def format_docs(docs):
     return "\n\n".join(doc.page_content for doc in docs)
 
-# 5. Create Chain (The Modern "Pipe" Way)
-prompt = ChatPromptTemplate.from_template("""
-Answer the question based ONLY on the following context:
+# 5. Create Chain (Updated with Polite Prompt)
+template = """
+You are a helpful AI assistant for a PDF Data Reader.
+Your task is to answer the user's question based ONLY on the provided context below.
+
+Rules:
+1. If the answer is not present in the context, DO NOT make up an answer.
+2. Instead, reply exactly with this polite message:
+"I checked the document for you, but it doesn't seem to mention that. Is there a different section you'd like me to summarize?"
+
+Context:
 {context}
 
 Question: {question}
-""")
+"""
+
+prompt = ChatPromptTemplate.from_template(template)
 
 retriever = db.as_retriever(search_kwargs={'k': 3})
 
