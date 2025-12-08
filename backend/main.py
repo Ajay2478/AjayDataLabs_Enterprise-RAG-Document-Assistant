@@ -1,6 +1,6 @@
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi import FastAPI, UploadFile, File, HTTPException, Form
+from fastapi import FastAPI, UploadFile, File, HTTPException
 from pydantic import BaseModel
 import os
 import shutil
@@ -38,7 +38,7 @@ app.mount("/static", StaticFiles(directory=UPLOAD_FOLDER), name="static")
 # 2. Load Brain
 api_key = os.getenv("GOOGLE_API_KEY")
 if not api_key:
-    print("Warning: GOOGLE_API_KEY not found")
+    print("Warning: GOOGLE_API_KEY not found. Ensure it is set in Railway Variables.")
 
 embeddings = GoogleGenerativeAIEmbeddings(model="models/text-embedding-004", google_api_key=api_key)
 llm = ChatGoogleGenerativeAI(model="gemini-1.5-flash", google_api_key=api_key)
@@ -72,33 +72,28 @@ async def upload_document(file: UploadFile = File(...)):
     
     return {"filename": file.filename, "status": "Indexed"}
 
-# --- NEW: SUMMARIZATION ENDPOINT (Phase 3) ---
+# --- FIXED SUMMARIZATION ENDPOINT ---
 @app.post("/summarize")
 async def summarize_document():
-    """
-    Reads the Vector DB and produces a summary of the uploaded document.
-    """
     try:
         # Load DB
         db = FAISS.load_local(DB_FAISS_PATH, embeddings, allow_dangerous_deserialization=True)
-        # Get a broad retriever (fetch more docs for context)
+        # Fetch more chunks for a better summary
         retriever = db.as_retriever(search_kwargs={'k': 10}) 
         
-        # Simple Summary Prompt
         prompt = ChatPromptTemplate.from_template("""
         You are an expert summarizer. 
-        Read the following context (parts of a document) and provide a concise summary.
+        Read the following context and provide a concise summary.
         
         Summary Guidelines:
         1. Start with "This document is about..."
         2. Provide 3-5 key bullet points.
-        3. Keep it professional and clear.
+        3. Keep it professional.
 
         Context:
         {context}
         """)
 
-        # Chain
         def format_docs(docs):
             return "\n\n".join(doc.page_content for doc in docs)
 
@@ -109,13 +104,12 @@ async def summarize_document():
             | StrOutputParser()
         )
         
-        # We invoke with empty dict because we just want to summarize 'context' from retriever
-        summary = chain.invoke({}) 
+        # FIX: Send a text string query, NOT an empty dict
+        summary = chain.invoke("Give me a comprehensive overview of this document") 
         return {"summary": summary}
 
     except Exception as e:
-        # If DB not found
-        return {"answer": "Please upload a document first so I can answer your questions!"}
+        return {"summary": f"SYSTEM ERROR (Summarize): {str(e)}"}
 
 @app.post("/query")
 async def ask_question(request: QueryRequest):
@@ -123,7 +117,6 @@ async def ask_question(request: QueryRequest):
         db = FAISS.load_local(DB_FAISS_PATH, embeddings, allow_dangerous_deserialization=True)
         retriever = db.as_retriever(search_kwargs={'k': 5})
 
-        # --- QA FIX: We made the prompt stricter ---
         prompt = ChatPromptTemplate.from_template("""
         You are a helpful AI assistant.
         Answer the question based ONLY on the following context.
@@ -151,10 +144,22 @@ async def ask_question(request: QueryRequest):
         
         raw_answer = rag_chain.invoke(request.question)
 
-        # --- PYTHON FORCE FIX ---
-        # If the AI says "I don't know" or our trigger word, we force the polite message.
+        # --- STRONGER FORCE FIX ---
         clean_answer = raw_answer.strip().lower()
-        if "polite_fallback_trigger" in clean_answer or "i don't know" in clean_answer:
+        
+        # List of phrases that indicate the AI couldn't find the answer
+        negative_triggers = [
+            "polite_fallback_trigger",
+            "i don't know",
+            "not mentioned",
+            "does not mention",
+            "no information",
+            "not present in the context",
+            "cannot answer"
+        ]
+
+        # Check if ANY negative phrase is in the answer
+        if any(trigger in clean_answer for trigger in negative_triggers):
             final_answer = "I checked the document for you, but it doesn't seem to mention that. Is there a different section you'd like me to summarize?"
         else:
             final_answer = raw_answer
@@ -162,5 +167,4 @@ async def ask_question(request: QueryRequest):
         return {"answer": final_answer}
 
     except Exception as e:
-        # RETURN THE REAL ERROR
-        return {"answer": f"SYSTEM ERROR: {str(e)}"}
+        return {"answer": f"SYSTEM ERROR (Query): {str(e)}"}

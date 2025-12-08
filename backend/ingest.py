@@ -1,12 +1,21 @@
-print("Starting script...")  # <--- Add this at the very top
-# ... rest of your code
+print("Starting script...")
 import os
+from dotenv import load_dotenv
 from langchain_text_splitters import RecursiveCharacterTextSplitter
-from langchain_huggingface import HuggingFaceEmbeddings
+# --- FIX: Use Google Embeddings to match main.py ---
+from langchain_google_genai import GoogleGenerativeAIEmbeddings
 from langchain_community.vectorstores import FAISS
-from extract import extract_text_from_pdf  # Importing your function from the previous step
+from extract import extract_text_from_pdf 
 
-# 1. Setup - Define paths
+# 1. Load Environment Variables (For Google API Key)
+load_dotenv()
+api_key = os.getenv("GOOGLE_API_KEY")
+
+if not api_key:
+    print("Error: GOOGLE_API_KEY not found. Check your .env file.")
+    exit()
+
+# 2. Setup Paths
 PDF_PATH = "sample.pdf"
 DB_FAISS_PATH = "vectorstore/db_faiss"
 
@@ -17,24 +26,24 @@ def create_vector_db():
         print("Error: No text extracted. Check your PDF.")
         return
 
-    # 2. Chunk the text
-    # We split by 500 characters, with 50 overlap to keep context between chunks
+    # 3. Chunk the text
     print("--- 2. Splitting text into chunks ---")
     text_splitter = RecursiveCharacterTextSplitter(chunk_size=500, chunk_overlap=50)
     chunks = text_splitter.split_text(raw_text)
     print(f"Created {len(chunks)} chunks.")
 
-    # 3. Create Embeddings
-    # We use 'sentence-transformers/all-MiniLM-L6-v2' (Small, Fast, Free)
-    print("--- 3. Creating Embeddings (This may take a moment) ---")
-    embeddings = HuggingFaceEmbeddings(model_name="sentence-transformers/all-MiniLM-L6-v2")
+    # 4. Create Embeddings (Must match main.py!)
+    print("--- 3. Creating Google Embeddings ---")
+    embeddings = GoogleGenerativeAIEmbeddings(model="models/text-embedding-004", google_api_key=api_key)
 
-    # 4. Create and Save Vector Store
+    # 5. Create and Save Vector Store
     print("--- 4. Saving to FAISS Vector DB ---")
-    db = FAISS.from_texts(chunks, embeddings)
-    db.save_local(DB_FAISS_PATH)
-    
-    print(f"Success! Vector DB saved to: {DB_FAISS_PATH}")
+    try:
+        db = FAISS.from_texts(chunks, embeddings)
+        db.save_local(DB_FAISS_PATH)
+        print(f"Success! Vector DB saved to: {DB_FAISS_PATH}")
+    except Exception as e:
+        print(f"Error saving DB: {e}")
 
 if __name__ == "__main__":
     create_vector_db()
