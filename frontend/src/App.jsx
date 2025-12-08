@@ -4,7 +4,6 @@ import { Send, Upload, Loader2, Bot, User, FileText, Trash2, Globe, FileOutput }
 
 // --- CONFIGURATION ---
 // ⚠️ IMPORTANT: Verify this is your exact Railway URL. 
-// It MUST start with "https://" and MUST NOT have a slash "/" at the end.
 const API_BASE_URL = "https://ai-pdf-rag-production.up.railway.app"; 
 
 function App() {
@@ -41,14 +40,11 @@ function App() {
     formData.append("file", selectedFile);
 
     try {
-      // FIX: Use the secure HTTPS variable defined at the top
       await axios.post(`${API_BASE_URL}/upload`, formData, {
         headers: { "Content-Type": "multipart/form-data" },
       });
       
-      // FIX: Use the secure HTTPS variable for the PDF viewer too
       setPdfUrl(`${API_BASE_URL}/static/${selectedFile.name}?t=${Date.now()}`);
-      
       setMessages(prev => [...prev, { type: 'ai', text: `I've read ${selectedFile.name}. Ask me anything!` }]);
     } catch (error) {
       console.error("Upload Error:", error);
@@ -63,17 +59,15 @@ function App() {
     const textToSend = customQuestion || question;
     if (!textToSend.trim()) return;
 
+    // Add User Message to Chat
     if (!customQuestion) {
         setMessages(prev => [...prev, { type: 'user', text: textToSend }]);
-    } else {
-        setMessages(prev => [...prev, { type: 'user', text: "✨ Generating Document Summary..." }]);
-    }
+    } 
     
     setQuestion("");
     setThinking(true);
 
     try {
-      // FIX: Use the secure HTTPS variable
       const res = await axios.post(`${API_BASE_URL}/query`, { question: textToSend });
       setMessages(prev => [...prev, { type: 'ai', text: res.data.answer }]);
     } catch (error) {
@@ -84,9 +78,24 @@ function App() {
     }
   };
 
-  // 4. Auto-Summary Button Handler
-  const handleSummary = () => {
-    handleAsk("Generate a structured summary of this document in 5 key bullet points. Keep it concise.");
+  // 4. Auto-Summary Button Handler (UPDATED TO USE REAL ENDPOINT)
+  const handleSummary = async () => {
+    // 1. Show "Generating..." message
+    setMessages(prev => [...prev, { type: 'user', text: "✨ Generating Document Summary..." }]);
+    setThinking(true);
+
+    try {
+        // 2. Call the dedicated /summarize endpoint
+        const res = await axios.post(`${API_BASE_URL}/summarize`);
+        
+        // 3. Display the result
+        setMessages(prev => [...prev, { type: 'ai', text: res.data.summary }]);
+    } catch (error) {
+        console.error("Summary Error:", error);
+        setMessages(prev => [...prev, { type: 'ai', text: "Error generating summary. Make sure a file is uploaded." }]);
+    } finally {
+        setThinking(false);
+    }
   };
 
   return (
@@ -104,7 +113,7 @@ function App() {
           {/* Action Buttons */}
           {pdfUrl && (
             <div className="flex space-x-2">
-                <button onClick={handleSummary} className="bg-green-600 hover:bg-green-500 text-white px-3 py-1 rounded text-sm flex items-center transition">
+                <button onClick={handleSummary} disabled={thinking} className="bg-green-600 hover:bg-green-500 text-white px-3 py-1 rounded text-sm flex items-center transition disabled:opacity-50">
                     <FileOutput size={16} className="mr-1"/> Summary
                 </button>
                 <button onClick={handleReset} className="bg-red-600 hover:bg-red-500 text-white px-3 py-1 rounded text-sm flex items-center transition">
