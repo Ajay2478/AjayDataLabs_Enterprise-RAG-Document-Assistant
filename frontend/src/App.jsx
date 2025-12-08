@@ -1,31 +1,57 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import axios from 'axios';
-import { Send, Upload, Loader2, Bot, User, FileText, Trash2, Globe, FileOutput } from 'lucide-react';
+import { Send, Upload, Loader2, Bot, User, FileText, Trash2, Globe, FileOutput, Clock, History } from 'lucide-react';
 
-// --- CONFIGURATION ---
-// ⚠️ IMPORTANT: Verify this is your exact Railway URL. 
+// ⚠️ YOUR RAILWAY URL
 const API_BASE_URL = "https://ai-pdf-rag-production.up.railway.app"; 
 
 function App() {
   const [file, setFile] = useState(null);
   const [pdfUrl, setPdfUrl] = useState(null);
   const [uploading, setUploading] = useState(false);
+  const [documents, setDocuments] = useState([]); // List of saved files
   
   const [question, setQuestion] = useState("");
-  const [messages, setMessages] = useState([
-    { type: 'ai', text: "Hello! Upload a PDF to start. I can answer in any language!" }
-  ]);
+  const [messages, setMessages] = useState([]);
   const [thinking, setThinking] = useState(false);
 
-  // 1. Reset Chat
-  const handleReset = () => {
-    setFile(null);
-    setPdfUrl(null);
-    setMessages([{ type: 'ai', text: "Ready for a new document! Upload one to begin." }]);
-    setQuestion("");
+  // --- 1. LOAD HISTORY ON STARTUP ---
+  useEffect(() => {
+    fetchHistory();
+    fetchDocuments();
+  }, []);
+
+  const fetchHistory = async () => {
+    try {
+        const res = await axios.get(`${API_BASE_URL}/history`);
+        if (res.data.history.length > 0) {
+            setMessages(res.data.history);
+        } else {
+            setMessages([{ type: 'ai', text: "Hello! Upload a PDF to start. I recall our past chats!" }]);
+        }
+    } catch (e) { console.error("History Error", e); }
   };
 
-  // 2. Upload Logic
+  const fetchDocuments = async () => {
+    try {
+        const res = await axios.get(`${API_BASE_URL}/documents`);
+        setDocuments(res.data.documents);
+    } catch (e) { console.error("Docs Error", e); }
+  };
+
+  // --- 2. RESET (CLEAR DB) ---
+  const handleReset = async () => {
+    if(!window.confirm("Are you sure? This deletes all chat history.")) return;
+    try {
+        await axios.delete(`${API_BASE_URL}/clear`);
+        setFile(null);
+        setPdfUrl(null);
+        setMessages([{ type: 'ai', text: "History cleared. Ready for a new document!" }]);
+        fetchDocuments(); // Refresh list
+    } catch(e) { alert("Error clearing history"); }
+  };
+
+  // --- 3. UPLOAD LOGIC ---
   const handleFileChange = async (e) => {
     if (e.target.files && e.target.files[0]) {
       const selectedFile = e.target.files[0];
@@ -44,25 +70,32 @@ function App() {
         headers: { "Content-Type": "multipart/form-data" },
       });
       
-      setPdfUrl(`${API_BASE_URL}/static/${selectedFile.name}?t=${Date.now()}`);
+      const url = `${API_BASE_URL}/static/${selectedFile.name}`;
+      setPdfUrl(url);
       setMessages(prev => [...prev, { type: 'ai', text: `I've read ${selectedFile.name}. Ask me anything!` }]);
+      fetchDocuments(); // Refresh the list of files
     } catch (error) {
       console.error("Upload Error:", error);
-      setMessages(prev => [...prev, { type: 'ai', text: "Error uploading file. Check Backend connection." }]);
+      alert("Error uploading file.");
     } finally {
       setUploading(false);
     }
   };
 
-  // 3. Ask Question Logic
+  // Helper to load an old file
+  const loadOldFile = (filename) => {
+      setPdfUrl(`${API_BASE_URL}/static/${filename}`);
+      setMessages(prev => [...prev, { type: 'ai', text: `Loaded ${filename} from history.` }]);
+  };
+
+  // --- 4. CHAT LOGIC ---
   const handleAsk = async (customQuestion = null) => {
     const textToSend = customQuestion || question;
     if (!textToSend.trim()) return;
 
-    // Add User Message to Chat
     if (!customQuestion) {
         setMessages(prev => [...prev, { type: 'user', text: textToSend }]);
-    } 
+    }
     
     setQuestion("");
     setThinking(true);
@@ -71,28 +104,20 @@ function App() {
       const res = await axios.post(`${API_BASE_URL}/query`, { question: textToSend });
       setMessages(prev => [...prev, { type: 'ai', text: res.data.answer }]);
     } catch (error) {
-      console.error("Chat Error:", error);
       setMessages(prev => [...prev, { type: 'ai', text: "Error: Could not get answer." }]);
     } finally {
       setThinking(false);
     }
   };
 
-  // 4. Auto-Summary Button Handler (UPDATED TO USE REAL ENDPOINT)
   const handleSummary = async () => {
-    // 1. Show "Generating..." message
     setMessages(prev => [...prev, { type: 'user', text: "✨ Generating Document Summary..." }]);
     setThinking(true);
-
     try {
-        // 2. Call the dedicated /summarize endpoint
         const res = await axios.post(`${API_BASE_URL}/summarize`);
-        
-        // 3. Display the result
         setMessages(prev => [...prev, { type: 'ai', text: res.data.summary }]);
     } catch (error) {
-        console.error("Summary Error:", error);
-        setMessages(prev => [...prev, { type: 'ai', text: "Error generating summary. Make sure a file is uploaded." }]);
+        setMessages(prev => [...prev, { type: 'ai', text: "Error generating summary." }]);
     } finally {
         setThinking(false);
     }
@@ -101,7 +126,7 @@ function App() {
   return (
     <div className="flex h-screen bg-gray-900 text-white font-sans overflow-hidden">
       
-      {/* LEFT SIDE: PDF Viewer */}
+      {/* LEFT SIDE: PDF Viewer & History */}
       <div className="w-1/2 border-r border-gray-700 bg-gray-800 flex flex-col">
         
         {/* Header */}
@@ -109,36 +134,59 @@ function App() {
           <h1 className="text-xl font-bold text-blue-400 flex items-center">
             <FileText className="mr-2" /> Document Viewer
           </h1>
-          
-          {/* Action Buttons */}
-          {pdfUrl && (
-            <div className="flex space-x-2">
-                <button onClick={handleSummary} disabled={thinking} className="bg-green-600 hover:bg-green-500 text-white px-3 py-1 rounded text-sm flex items-center transition disabled:opacity-50">
+          <div className="flex space-x-2">
+            {pdfUrl && (
+                <button onClick={handleSummary} disabled={thinking} className="bg-green-600 hover:bg-green-500 text-white px-3 py-1 rounded text-sm flex items-center transition">
                     <FileOutput size={16} className="mr-1"/> Summary
                 </button>
-                <button onClick={handleReset} className="bg-red-600 hover:bg-red-500 text-white px-3 py-1 rounded text-sm flex items-center transition">
-                    <Trash2 size={16} className="mr-1"/> Reset
-                </button>
-            </div>
-          )}
+            )}
+            <button onClick={handleReset} className="bg-red-600 hover:bg-red-500 text-white px-3 py-1 rounded text-sm flex items-center transition">
+                <Trash2 size={16} className="mr-1"/> Clear History
+            </button>
+          </div>
         </div>
 
-        {/* PDF Content */}
-        <div className="flex-1 bg-gray-700 relative">
+        {/* PDF Content or Saved Files List */}
+        <div className="flex-1 bg-gray-700 relative overflow-y-auto">
           {pdfUrl ? (
             <iframe src={pdfUrl} className="w-full h-full border-none" title="PDF Viewer" />
           ) : (
-            <div className="flex flex-col items-center justify-center h-full p-10 text-center">
-              <label className="border-2 border-dashed border-gray-500 rounded-xl p-10 hover:border-blue-500 hover:bg-gray-700/50 transition cursor-pointer group">
-                <input type="file" onChange={handleFileChange} className="hidden" accept=".pdf" />
-                <div className="flex flex-col items-center">
-                  <div className="w-16 h-16 bg-gray-800 rounded-full flex items-center justify-center mb-4 group-hover:scale-110 transition">
-                    {uploading ? <Loader2 className="animate-spin text-blue-400" /> : <Upload className="text-blue-400" />}
-                  </div>
-                  <h3 className="text-lg font-semibold text-gray-200">Upload PDF Document</h3>
-                  <p className="text-gray-400 text-sm mt-2">Supports Multilingual Q&A + Summarization</p>
+            <div className="p-8">
+                {/* Upload Box */}
+                <div className="mb-8 flex justify-center">
+                    <label className="border-2 border-dashed border-gray-500 rounded-xl p-8 hover:border-blue-500 hover:bg-gray-700/50 transition cursor-pointer group w-full max-w-md text-center">
+                        <input type="file" onChange={handleFileChange} className="hidden" accept=".pdf" />
+                        <div className="flex flex-col items-center">
+                        <div className="w-12 h-12 bg-gray-800 rounded-full flex items-center justify-center mb-3 group-hover:scale-110 transition">
+                            {uploading ? <Loader2 className="animate-spin text-blue-400" /> : <Upload className="text-blue-400" />}
+                        </div>
+                        <h3 className="font-semibold text-gray-200">Upload New PDF</h3>
+                        </div>
+                    </label>
                 </div>
-              </label>
+
+                {/* Saved Documents List */}
+                {documents.length > 0 && (
+                    <div className="max-w-md mx-auto">
+                        <h3 className="text-gray-400 text-sm font-bold uppercase tracking-wider mb-3 flex items-center">
+                            <History size={16} className="mr-2"/> Recently Uploaded
+                        </h3>
+                        <div className="space-y-2">
+                            {documents.map((doc, i) => (
+                                <div key={i} onClick={() => loadOldFile(doc.filename)} 
+                                     className="bg-gray-800 p-3 rounded flex justify-between items-center cursor-pointer hover:bg-gray-600 transition border border-gray-700">
+                                    <div className="flex items-center">
+                                        <FileText size={18} className="text-blue-400 mr-3"/>
+                                        <span className="text-sm font-medium">{doc.filename}</span>
+                                    </div>
+                                    <span className="text-xs text-gray-500 flex items-center">
+                                        <Clock size={12} className="mr-1"/> {doc.date.split(' ')[0]}
+                                    </span>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                )}
             </div>
           )}
         </div>
