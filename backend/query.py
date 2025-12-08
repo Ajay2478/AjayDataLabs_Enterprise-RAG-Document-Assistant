@@ -30,8 +30,7 @@ except Exception as e:
     exit()
 
 # 3. Setup Brain
-llm = ChatGoogleGenerativeAI(model="gemini-1.5-flash-001", google_api_key=api_key)
-
+embeddings = GoogleGenerativeAIEmbeddings(model="models/text-embedding-004", google_api_key=api_key)
 # 4. Define Helper
 def format_docs(docs):
     return "\n\n".join(f"[Page {doc.metadata.get('page', 0) + 1}]: {doc.page_content}" for doc in docs)
