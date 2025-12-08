@@ -24,7 +24,7 @@ app = FastAPI(title="AI PDF Assistant API")
 # Define Paths
 DB_FAISS_PATH = "vectorstore/db_faiss"
 UPLOAD_FOLDER = "uploaded_files"
-SQLITE_DB = "history.db"  # <--- NEW: SQLite Database File
+SQLITE_DB = "history.db"
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
 # CORS Middleware
@@ -46,7 +46,7 @@ if not api_key:
 embeddings = GoogleGenerativeAIEmbeddings(model="models/text-embedding-004", google_api_key=api_key)
 llm = ChatGoogleGenerativeAI(model="gemini-flash-latest", google_api_key=api_key)
 
-# --- NEW: DATABASE SETUP ---
+# --- DATABASE SETUP ---
 def init_db():
     conn = sqlite3.connect(SQLITE_DB)
     c = conn.cursor()
@@ -70,9 +70,9 @@ class QueryRequest(BaseModel):
 
 @app.get("/")
 def home():
-    return {"message": "AI PDF API is Running with History!"}
+    return {"message": "AI PDF API is Running with Smart Prompts!"}
 
-# --- NEW: HISTORY ENDPOINTS ---
+# --- HISTORY ENDPOINTS ---
 @app.get("/documents")
 def get_documents():
     conn = sqlite3.connect(SQLITE_DB)
@@ -96,7 +96,7 @@ def clear_history():
     conn = sqlite3.connect(SQLITE_DB)
     c = conn.cursor()
     c.execute("DELETE FROM chats")
-    c.execute("DELETE FROM documents") # Optional: clear docs too
+    c.execute("DELETE FROM documents") 
     conn.commit()
     conn.close()
     return {"message": "History Cleared"}
@@ -172,13 +172,20 @@ async def ask_question(request: QueryRequest):
         db = FAISS.load_local(DB_FAISS_PATH, embeddings, allow_dangerous_deserialization=True)
         retriever = db.as_retriever(search_kwargs={'k': 5})
 
+        # --- UPDATED PROMPT: SMART HANDLING FOR SUMMARIES/TRANSLATIONS ---
         prompt = ChatPromptTemplate.from_template("""
         You are a helpful AI assistant.
-        Answer the question based ONLY on the following context.
-        STRICT RULES:
+        Answer the question based on the following context.
+        
+        RULES:
         1. If the answer is found, cite the page number like [Page X].
-        2. If the answer is NOT in the context, output EXACTLY this string: "polite_fallback_trigger"
-        Context: {context}
+        2. If the user asks for a SUMMARY, TRANSLATION, or OVERVIEW, ignore the "not found" rule and generate the best response possible from the context.
+        3. If the user asks for a specific fact (e.g., "What is the email?") and it is NOT in the context, output EXACTLY: "polite_fallback_trigger"
+        4. Answer in the same language as the question (e.g., Hindi for Hindi).
+
+        Context:
+        {context}
+
         Question: {question}
         """)
         
