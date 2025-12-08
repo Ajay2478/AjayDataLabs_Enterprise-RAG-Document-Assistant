@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
-import { Send, Upload, Loader2, Bot, User, FileText, Trash2, Globe, FileOutput, Clock, History, Volume2, StopCircle, Plus } from 'lucide-react';
+import { Send, Upload, Loader2, Bot, User, FileText, Trash2, Globe, FileOutput, Clock, History, Volume2, StopCircle, Plus, Copy, Check } from 'lucide-react';
 
 // ⚠️ YOUR RAILWAY URL
 const API_BASE_URL = "https://ai-pdf-rag-production.up.railway.app"; 
@@ -15,8 +15,9 @@ function App() {
   const [messages, setMessages] = useState([]);
   const [thinking, setThinking] = useState(false);
   
-  // --- AUDIO STATE ---
+  // --- AUDIO & COPY STATE ---
   const [isSpeaking, setIsSpeaking] = useState(false);
+  const [copiedIndex, setCopiedIndex] = useState(null); // Tracks which message shows the "Check" mark
 
   // --- 1. LOAD HISTORY ---
   useEffect(() => {
@@ -64,9 +65,15 @@ function App() {
       setIsSpeaking(false);
   };
 
-  // --- 3. RESET & NEW UPLOAD ---
-  
-  // A. Destructive Reset (Deletes DB)
+  // --- 3. COPY LOGIC ---
+  const handleCopy = (text, index) => {
+      navigator.clipboard.writeText(text);
+      setCopiedIndex(index);
+      // Reset checkmark after 2 seconds
+      setTimeout(() => setCopiedIndex(null), 2000);
+  };
+
+  // --- 4. RESET & NEW UPLOAD ---
   const handleClearHistory = async () => {
     if(!window.confirm("Are you sure? This deletes ALL chat history and saved files.")) return;
     stopSpeaking();
@@ -79,16 +86,14 @@ function App() {
     } catch(e) { alert("Error clearing history"); }
   };
 
-  // B. New Upload (UI Reset Only)
   const handleNewUpload = () => {
       stopSpeaking();
-      setPdfUrl(null); // This hides the PDF viewer and shows the Upload box
+      setPdfUrl(null); 
       setFile(null);
-      // Optional: Add a separator line in chat or just keep history visible
       setMessages(prev => [...prev, { type: 'ai', text: "--- Ready for new file ---" }]);
   };
 
-  // --- 4. UPLOAD ---
+  // --- 5. UPLOAD ---
   const handleFileChange = async (e) => {
     if (e.target.files && e.target.files[0]) {
       const selectedFile = e.target.files[0];
@@ -124,7 +129,7 @@ function App() {
       setMessages(prev => [...prev, { type: 'ai', text: `Loaded ${filename} from history.` }]);
   };
 
-  // --- 5. CHAT ---
+  // --- 6. CHAT ---
   const handleAsk = async (customQuestion = null) => {
     const textToSend = customQuestion || question;
     if (!textToSend.trim()) return;
@@ -252,8 +257,15 @@ function App() {
               {msg.type === 'ai' && (
                   <div className="mr-3 flex flex-col items-center">
                       <div className="w-8 h-8 rounded-full bg-blue-600 flex items-center justify-center mb-2"><Bot size={18}/></div>
-                      <button onClick={() => speakText(msg.text)} className="text-gray-500 hover:text-blue-400 transition" title="Read Aloud">
+                      
+                      {/* Audio Button */}
+                      <button onClick={() => speakText(msg.text)} className="text-gray-500 hover:text-blue-400 transition mb-1" title="Read Aloud">
                           <Volume2 size={16} />
+                      </button>
+                      
+                      {/* NEW: Copy Button */}
+                      <button onClick={() => handleCopy(msg.text, index)} className="text-gray-500 hover:text-green-400 transition" title="Copy Text">
+                          {copiedIndex === index ? <Check size={16} className="text-green-500"/> : <Copy size={16} />}
                       </button>
                   </div>
               )}
