@@ -1,11 +1,10 @@
-print("Starting script...")
 import os
 import shutil
 from dotenv import load_dotenv
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_google_genai import GoogleGenerativeAIEmbeddings
 from langchain_community.vectorstores import FAISS
-from extract import extract_text_from_pdf 
+from langchain_community.document_loaders import PDFPlumberLoader  # <--- USE THIS
 
 # 1. Load Environment Variables
 load_dotenv()
@@ -20,34 +19,37 @@ PDF_PATH = "sample.pdf"
 DB_FAISS_PATH = "vectorstore/db_faiss"
 
 def create_vector_db():
-    # --- SAFETY CHECK: Delete old DB to prevent format conflicts ---
+    # --- Check if PDF exists ---
+    if not os.path.exists(PDF_PATH):
+        print(f"Error: '{PDF_PATH}' not found. Please add a PDF file named 'sample.pdf' to this folder.")
+        return
+
+    # --- SAFETY CHECK: Delete old DB ---
     if os.path.exists(DB_FAISS_PATH):
         print(f"Removing old vectorstore at {DB_FAISS_PATH}...")
         try:
             shutil.rmtree(DB_FAISS_PATH)
         except Exception as e:
-            print(f"Warning: Could not delete old DB automatically. Please delete '{DB_FAISS_PATH}' manually. Error: {e}")
+            print(f"Warning: Could not delete old DB automatically. Delete '{DB_FAISS_PATH}' manually.")
 
-    print(f"--- 1. Extracting text from {PDF_PATH} ---")
+    print(f"--- 1. Loading PDF from {PDF_PATH} ---")
     
-    # Ensure extract.py exists and works
-    try:
-        raw_text = extract_text_from_pdf(PDF_PATH)
-    except Exception as e:
-        print(f"Error calling extract_text_from_pdf: {e}")
-        return
-
-    if not raw_text:
-        print("Error: No text extracted. Check if PDF exists and is readable.")
+    # Use PDFPlumber to keep Page Numbers (Metadata)
+    loader = PDFPlumberLoader(PDF_PATH)
+    docs = loader.load()
+    
+    if not docs:
+        print("Error: No text extracted. File might be empty or image-based.")
         return
 
     # 3. Chunk the text
     print("--- 2. Splitting text into chunks ---")
     text_splitter = RecursiveCharacterTextSplitter(chunk_size=500, chunk_overlap=50)
-    chunks = text_splitter.split_text(raw_text)
+    # Note: split_documents preserves metadata (page numbers)
+    chunks = text_splitter.split_documents(docs) 
     print(f"Created {len(chunks)} chunks.")
 
-    # 4. Create Embeddings (Must match main.py!)
+    # 4. Create Embeddings
     print("--- 3. Creating Google Embeddings ---")
     try:
         embeddings = GoogleGenerativeAIEmbeddings(model="models/text-embedding-004", google_api_key=api_key)
@@ -58,7 +60,8 @@ def create_vector_db():
     # 5. Create and Save Vector Store
     print("--- 4. Saving to FAISS Vector DB ---")
     try:
-        db = FAISS.from_texts(chunks, embeddings)
+        # Note: from_documents preserves metadata
+        db = FAISS.from_documents(chunks, embeddings) 
         db.save_local(DB_FAISS_PATH)
         print(f"Success! Vector DB saved to: {DB_FAISS_PATH}")
     except Exception as e:

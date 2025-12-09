@@ -32,7 +32,7 @@ except Exception as e:
 # We are using a model CONFIRMED to be in your list:
 # Switch to Flash Lite to bypass the 2.5 Daily Limit
 # Use Flash Lite - it is fast and has a separate quota bucket
-llm = ChatGoogleGenerativeAI(model="models/gemini-2.0-flash-lite", google_api_key=api_key)
+llm = ChatGroq(model="llama3-8b-8192", temperature=0.3, groq_api_key=groq_api_key)
 
 # 4. Define Helper
 def format_docs(docs):
