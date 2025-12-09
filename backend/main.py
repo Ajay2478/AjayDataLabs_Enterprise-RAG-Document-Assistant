@@ -44,7 +44,8 @@ if not api_key:
     print("Warning: GOOGLE_API_KEY not found.")
 
 embeddings = GoogleGenerativeAIEmbeddings(model="models/text-embedding-004", google_api_key=api_key)
-llm = ChatGoogleGenerativeAI(model="gemini-flash-latest", google_api_key=api_key)
+# Switch to Flash Lite to bypass the 2.5 Daily Limit
+llm = ChatGoogleGenerativeAI(model="gemini-2.0-flash-lite", google_api_key=api_key)
 
 # --- DATABASE SETUP ---
 def init_db():
