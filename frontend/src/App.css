@@ -1,42 +1,305 @@
-#root {
-  max-width: 1280px;
-  margin: 0 auto;
+/* --- GLOBAL LAYOUT --- */
+body {
+  margin: 0;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  background-color: #111827; /* Dark BG */
+  color: #ffffff;
+  overflow: hidden; /* Prevent body scroll */
+}
+
+.app-container {
+  display: flex;
+  height: 100vh;
+  width: 100vw;
+  overflow: hidden;
+}
+
+/* --- LEFT PANEL (PDF VIEWER) --- */
+.left-panel {
+  width: 50%;
+  display: flex;
+  flex-direction: column;
+  background-color: #1f2937;
+  border-right: 1px solid #374151;
+}
+
+.header-bar {
+  padding: 1rem;
+  background-color: #111827;
+  border-bottom: 1px solid #374151;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.header-title {
+  font-size: 1.25rem;
+  font-weight: bold;
+  color: #60a5fa; /* Blue */
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0;
+}
+
+.toolbar-actions {
+  display: flex;
+  gap: 0.5rem;
+}
+
+/* --- BUTTONS --- */
+.btn {
+  padding: 0.5rem 0.75rem;
+  border-radius: 6px;
+  font-size: 0.875rem;
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  color: white;
+  transition: background-color 0.2s;
+}
+
+.btn-blue { background-color: #2563eb; }
+.btn-blue:hover { background-color: #1d4ed8; }
+
+.btn-green { background-color: #16a34a; }
+.btn-green:hover { background-color: #15803d; }
+
+.btn-red { background-color: #dc2626; }
+.btn-red:hover { background-color: #b91c1c; }
+
+.btn-float-stop {
+  position: absolute;
+  top: 1rem;
+  right: 1rem;
+  background-color: #ef4444;
+  padding: 0.5rem 1rem;
+  border-radius: 9999px;
+  box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+  z-index: 50;
+  animation: pulse 2s infinite;
+}
+
+/* --- VIEWER AREA --- */
+.viewer-content {
+  flex: 1;
+  background-color: #374151;
+  position: relative;
+  overflow-y: auto;
+}
+
+.pdf-frame {
+  width: 100%;
+  height: 100%;
+  border: none;
+}
+
+.upload-container {
   padding: 2rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-top: 2rem;
+}
+
+.upload-box {
+  border: 2px dashed #6b7280;
+  border-radius: 12px;
+  padding: 3rem;
   text-align: center;
+  cursor: pointer;
+  width: 100%;
+  max-width: 400px;
+  transition: all 0.2s;
 }
 
-.logo {
-  height: 6em;
-  padding: 1.5em;
-  will-change: filter;
-  transition: filter 300ms;
-}
-.logo:hover {
-  filter: drop-shadow(0 0 2em #646cffaa);
-}
-.logo.react:hover {
-  filter: drop-shadow(0 0 2em #61dafbaa);
+.upload-box:hover {
+  border-color: #3b82f6;
+  background-color: rgba(55, 65, 81, 0.5);
 }
 
-@keyframes logo-spin {
-  from {
-    transform: rotate(0deg);
-  }
-  to {
-    transform: rotate(360deg);
-  }
+.upload-icon-wrapper {
+  width: 3rem;
+  height: 3rem;
+  background-color: #1f2937;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 1rem auto;
 }
 
-@media (prefers-reduced-motion: no-preference) {
-  a:nth-of-type(2) .logo {
-    animation: logo-spin infinite 20s linear;
-  }
+/* --- HISTORY LIST --- */
+.history-section {
+  max-width: 400px;
+  margin: 0 auto;
+  width: 100%;
 }
 
-.card {
-  padding: 2em;
+.history-title {
+  color: #9ca3af;
+  font-size: 0.75rem;
+  font-weight: bold;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 0.75rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
 }
 
-.read-the-docs {
-  color: #888;
+.history-item {
+  background-color: #1f2937;
+  padding: 0.75rem;
+  border-radius: 6px;
+  margin-bottom: 0.5rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  cursor: pointer;
+  border: 1px solid #374151;
 }
+
+.history-item:hover {
+  background-color: #374151;
+}
+
+/* --- RIGHT PANEL (CHAT) --- */
+.right-panel {
+  width: 50%;
+  display: flex;
+  flex-direction: column;
+  background-color: #111827;
+  position: relative;
+}
+
+.chat-messages {
+  flex: 1;
+  padding: 1.5rem;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+/* Message Bubbles */
+.message-row {
+  display: flex;
+  align-items: flex-start;
+}
+
+.message-row.user-row {
+  justify-content: flex-end;
+}
+
+.avatar-col {
+  margin-right: 0.75rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.avatar {
+  width: 2rem;
+  height: 2rem;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.bg-blue { background-color: #2563eb; }
+.bg-purple { background-color: #9333ea; }
+
+.icon-btn {
+  background: none;
+  border: none;
+  color: #6b7280;
+  cursor: pointer;
+  padding: 2px;
+}
+.icon-btn:hover { color: #60a5fa; }
+
+.message-bubble {
+  padding: 1rem;
+  border-radius: 12px;
+  max-width: 80%;
+  line-height: 1.6;
+  white-space: pre-wrap;
+}
+
+.bubble-user {
+  background-color: #2563eb;
+  color: white;
+}
+
+.bubble-ai {
+  background-color: #1f2937;
+  color: #e5e7eb;
+  border: 1px solid #374151;
+}
+
+.thinking {
+  color: #6b7280;
+  font-size: 0.875rem;
+  margin-left: 3rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+/* --- INPUT AREA --- */
+.input-section {
+  padding: 1rem;
+  border-top: 1px solid #1f2937;
+  background-color: #111827;
+}
+
+.input-wrapper {
+  display: flex;
+  align-items: center;
+  background-color: #1f2937;
+  border-radius: 9999px;
+  padding: 0.75rem 1rem;
+  border: 1px solid #374151;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+}
+
+.input-wrapper:focus-within {
+  border-color: #3b82f6;
+}
+
+.chat-input {
+  flex: 1;
+  background: transparent;
+  border: none;
+  outline: none;
+  color: white;
+  margin: 0 0.5rem;
+  font-size: 1rem;
+}
+
+.send-btn-round {
+  padding: 0.5rem;
+  background-color: #2563eb;
+  border-radius: 50%;
+  color: white;
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.send-btn-round:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Animations */
+@keyframes spin { 100% { transform: rotate(360deg); } }
+.spin { animation: spin 1s linear infinite; }
+@keyframes pulse { 50% { opacity: 0.5; } }

@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { Send, Upload, Loader2, Bot, User, FileText, Trash2, Globe, FileOutput, Clock, History, Volume2, StopCircle, Plus, Copy, Check } from 'lucide-react';
+import './App.css'; // <--- Import Pure CSS
 
-// ⚠️ YOUR RAILWAY URL
+// ⚠️ RAILWAY URL
 const API_BASE_URL = "https://ai-pdf-rag-production.up.railway.app"; 
 
 function App() {
@@ -17,7 +18,7 @@ function App() {
   
   // --- AUDIO & COPY STATE ---
   const [isSpeaking, setIsSpeaking] = useState(false);
-  const [copiedIndex, setCopiedIndex] = useState(null); // Tracks which message shows the "Check" mark
+  const [copiedIndex, setCopiedIndex] = useState(null);
 
   // --- 1. LOAD HISTORY ---
   useEffect(() => {
@@ -69,7 +70,6 @@ function App() {
   const handleCopy = (text, index) => {
       navigator.clipboard.writeText(text);
       setCopiedIndex(index);
-      // Reset checkmark after 2 seconds
       setTimeout(() => setCopiedIndex(null), 2000);
   };
 
@@ -165,69 +165,66 @@ function App() {
   };
 
   return (
-    <div className="flex h-screen bg-gray-900 text-white font-sans overflow-hidden">
+    <div className="app-container">
       
-      {/* LEFT SIDE: PDF Viewer & History */}
-      <div className="w-1/2 border-r border-gray-700 bg-gray-800 flex flex-col">
+      {/* LEFT PANEL: PDF Viewer & History */}
+      <div className="left-panel">
         
         {/* Header */}
-        <div className="p-4 border-b border-gray-700 flex justify-between items-center bg-gray-900">
-          <h1 className="text-xl font-bold text-blue-400 flex items-center">
-            <FileText className="mr-2" /> Document Viewer
+        <div className="header-bar">
+          <h1 className="header-title">
+            <FileText size={20} /> Document Viewer
           </h1>
-          <div className="flex space-x-2">
-            {/* NEW UPLOAD BUTTON */}
-            <button onClick={handleNewUpload} className="bg-blue-600 hover:bg-blue-500 text-white px-3 py-1 rounded text-sm flex items-center transition" title="Upload a different file">
-                <Plus size={16} className="mr-1"/> New
+          <div className="toolbar-actions">
+            <button onClick={handleNewUpload} className="btn btn-blue" title="Upload a different file">
+                <Plus size={16} /> New
             </button>
             
             {pdfUrl && (
-                <button onClick={handleSummary} disabled={thinking} className="bg-green-600 hover:bg-green-500 text-white px-3 py-1 rounded text-sm flex items-center transition">
-                    <FileOutput size={16} className="mr-1"/> Summary
+                <button onClick={handleSummary} disabled={thinking} className="btn btn-green">
+                    <FileOutput size={16} /> Summary
                 </button>
             )}
             
-            <button onClick={handleClearHistory} className="bg-red-600 hover:bg-red-500 text-white px-3 py-1 rounded text-sm flex items-center transition" title="Delete all history">
-                <Trash2 size={16} className="mr-1"/> Clear
+            <button onClick={handleClearHistory} className="btn btn-red" title="Delete all history">
+                <Trash2 size={16} /> Clear
             </button>
           </div>
         </div>
 
         {/* PDF Content */}
-        <div className="flex-1 bg-gray-700 relative overflow-y-auto">
+        <div className="viewer-content">
           {pdfUrl ? (
-            <iframe src={pdfUrl} className="w-full h-full border-none" title="PDF Viewer" />
+            <iframe src={pdfUrl} className="pdf-frame" title="PDF Viewer" />
           ) : (
-            <div className="p-8">
+            <div className="upload-container">
                 {/* Upload Box */}
-                <div className="mb-8 flex justify-center">
-                    <label className="border-2 border-dashed border-gray-500 rounded-xl p-8 hover:border-blue-500 hover:bg-gray-700/50 transition cursor-pointer group w-full max-w-md text-center">
-                        <input type="file" onChange={handleFileChange} className="hidden" accept=".pdf" />
-                        <div className="flex flex-col items-center">
-                        <div className="w-12 h-12 bg-gray-800 rounded-full flex items-center justify-center mb-3 group-hover:scale-110 transition">
-                            {uploading ? <Loader2 className="animate-spin text-blue-400" /> : <Upload className="text-blue-400" />}
-                        </div>
-                        <h3 className="font-semibold text-gray-200">Upload New PDF</h3>
-                        </div>
-                    </label>
-                </div>
+                <label className="upload-box">
+                    <input type="file" onChange={handleFileChange} style={{display: 'none'}} accept=".pdf" />
+                    <div className="upload-content">
+                      <div className="upload-icon-wrapper">
+                        {uploading ? <Loader2 className="spin text-blue-400" /> : <Upload className="text-blue-400" />}
+                      </div>
+                      <h3 className="font-semibold text-gray-200">Upload New PDF</h3>
+                    </div>
+                </label>
 
                 {/* Saved Documents */}
                 {documents.length > 0 && (
-                    <div className="max-w-md mx-auto">
-                        <h3 className="text-gray-400 text-sm font-bold uppercase tracking-wider mb-3 flex items-center">
-                            <History size={16} className="mr-2"/> Recently Uploaded
+                    <div className="history-section">
+                        <br/>
+                        <h3 className="history-title">
+                            <History size={16} /> Recently Uploaded
                         </h3>
-                        <div className="space-y-2">
+                        <div className="history-list">
                             {documents.map((doc, i) => (
-                                <div key={i} onClick={() => loadOldFile(doc.filename)} 
-                                     className="bg-gray-800 p-3 rounded flex justify-between items-center cursor-pointer hover:bg-gray-600 transition border border-gray-700">
-                                    <div className="flex items-center">
-                                        <FileText size={18} className="text-blue-400 mr-3"/>
-                                        <span className="text-sm font-medium">{doc.filename}</span>
+                                <div key={i} onClick={() => loadOldFile(doc.filename)} className="history-item">
+                                    <div style={{display: 'flex', alignItems: 'center'}}>
+                                        <FileText size={18} style={{marginRight: '10px', color: '#60a5fa'}}/>
+                                        <span style={{fontSize: '0.9rem'}}>{doc.filename}</span>
                                     </div>
-                                    <span className="text-xs text-gray-500 flex items-center">
-                                        <Clock size={12} className="mr-1"/> {doc.date.split(' ')[0]}
+                                    <span style={{fontSize: '0.8rem', color: '#6b7280', display: 'flex', alignItems: 'center'}}>
+                                        <Clock size={12} style={{marginRight: '4px'}}/> {doc.date.split(' ')[0]}
                                     </span>
                                 </div>
                             ))}
@@ -239,59 +236,60 @@ function App() {
         </div>
       </div>
 
-      {/* RIGHT SIDE: Chat */}
-      <div className="w-1/2 flex flex-col bg-gray-900">
+      {/* RIGHT PANEL: Chat */}
+      <div className="right-panel">
         
         {isSpeaking && (
-            <div className="absolute top-4 right-4 z-50">
-                <button onClick={stopSpeaking} className="bg-red-500 text-white px-4 py-2 rounded-full shadow-lg flex items-center animate-pulse">
-                    <StopCircle size={20} className="mr-2"/> Stop Reading
-                </button>
-            </div>
+            <button onClick={stopSpeaking} className="btn btn-float-stop btn-red">
+                <StopCircle size={20} style={{marginRight: '5px'}}/> Stop Reading
+            </button>
         )}
 
-        <div className="flex-1 p-6 overflow-y-auto space-y-6">
+        <div className="chat-messages">
           {messages.map((msg, index) => (
-            <div key={index} className={`flex items-start ${msg.type === 'user' ? 'justify-end' : ''}`}>
+            <div key={index} className={`message-row ${msg.type === 'user' ? 'user-row' : ''}`}>
               
               {msg.type === 'ai' && (
-                  <div className="mr-3 flex flex-col items-center">
-                      <div className="w-8 h-8 rounded-full bg-blue-600 flex items-center justify-center mb-2"><Bot size={18}/></div>
+                  <div className="avatar-col">
+                      <div className="avatar bg-blue"><Bot size={18} color="white"/></div>
                       
-                      {/* Audio Button */}
-                      <button onClick={() => speakText(msg.text)} className="text-gray-500 hover:text-blue-400 transition mb-1" title="Read Aloud">
+                      <button onClick={() => speakText(msg.text)} className="icon-btn" title="Read Aloud">
                           <Volume2 size={16} />
                       </button>
                       
-                      {/* NEW: Copy Button */}
-                      <button onClick={() => handleCopy(msg.text, index)} className="text-gray-500 hover:text-green-400 transition" title="Copy Text">
-                          {copiedIndex === index ? <Check size={16} className="text-green-500"/> : <Copy size={16} />}
+                      <button onClick={() => handleCopy(msg.text, index)} className="icon-btn" title="Copy Text">
+                          {copiedIndex === index ? <Check size={16} color="#16a34a"/> : <Copy size={16} />}
                       </button>
                   </div>
               )}
               
-              <div className={`p-4 rounded-xl max-w-xl ${msg.type === 'user' ? 'bg-blue-600 text-white' : 'bg-gray-800 text-gray-200 border border-gray-700'}`}>
-                <p className="leading-relaxed whitespace-pre-wrap">{msg.text}</p>
+              <div className={`message-bubble ${msg.type === 'user' ? 'bubble-user' : 'bubble-ai'}`}>
+                {msg.text}
               </div>
               
-              {msg.type === 'user' && <div className="w-8 h-8 rounded-full bg-purple-600 flex items-center justify-center ml-3"><User size={18}/></div>}
+              {msg.type === 'user' && <div className="avatar bg-purple" style={{marginLeft: '10px'}}><User size={18} color="white"/></div>}
             </div>
           ))}
-          {thinking && <div className="flex items-center text-gray-500 text-sm ml-12"><Loader2 className="w-3 h-3 animate-spin mr-2" /> AI is thinking...</div>}
+          
+          {thinking && (
+            <div className="thinking">
+              <Loader2 className="spin" size={16} /> AI is thinking...
+            </div>
+          )}
         </div>
 
-        <div className="p-4 border-t border-gray-800 bg-gray-900">
-          <div className="flex items-center bg-gray-800 rounded-full px-4 py-3 border border-gray-700 focus-within:border-blue-500 transition shadow-lg">
-            <Globe className="text-gray-500 mr-2" size={20} />
+        <div className="input-section">
+          <div className="input-wrapper">
+            <Globe className="text-gray-500" size={20} />
             <input 
+              className="chat-input"
               type="text" 
               value={question}
               onChange={(e) => setQuestion(e.target.value)}
               onKeyPress={(e) => e.key === 'Enter' && handleAsk()}
               placeholder="Ask anything..." 
-              className="flex-1 bg-transparent border-none outline-none text-white placeholder-gray-400"
             />
-            <button onClick={() => handleAsk()} disabled={!question || thinking} className="p-2 bg-blue-600 hover:bg-blue-500 rounded-full text-white transition disabled:opacity-50 ml-2">
+            <button onClick={() => handleAsk()} disabled={!question || thinking} className="send-btn-round">
               <Send size={18} />
             </button>
           </div>
