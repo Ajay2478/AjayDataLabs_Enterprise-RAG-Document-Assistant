@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { Send, Upload, Loader2, Bot, User, FileText, Trash2, Globe, FileOutput, Clock, History, Volume2, StopCircle, Plus, Copy, Check } from 'lucide-react';
-import './App.css'; // <--- Import Pure CSS
+import './App.css';
 
-// ⚠️ RAILWAY URL
-const API_BASE_URL = "https://ai-pdf-rag-production.up.railway.app"; 
+// 🚀 ENTERPRISE FIX: Dynamic URL
+// This allows Vercel to inject the NEW backend link automatically.
+// If running locally, it defaults to localhost.
+const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:8000";
 
 function App() {
   const [file, setFile] = useState(null);
