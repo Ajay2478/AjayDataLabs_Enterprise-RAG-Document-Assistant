@@ -1,18 +1,31 @@
-# Ignore the virtual environment
-venv/
+# Python
 .venv/
-
-# Ignore Python cache
 __pycache__/
-*.py[cod]
-.env
+*.pyc
 
-# Ignore Node.js (Frontend) heavy files
+# Environment
+.env
+backend/.env
+.env.*
+
+# Database
+*.db
+*.sqlite
+*.sqlite3
+
+# RAG Data
+backend/uploaded_files/
+backend/vectorstore/
+backend/data/
+
+# Node
 node_modules/
 frontend/node_modules/
 dist/
 frontend/dist/
 
-# Ignore Database & Uploads
-backend/uploaded_files/
-backend/vectorstore/
+# OS / Editor
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
