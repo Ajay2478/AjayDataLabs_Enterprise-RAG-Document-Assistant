@@ -68,7 +68,42 @@ The system follows a client-server model:
 - LLM (Groq Llama-3): Reasoning engine  
 - SQLite: Chat and document history  
 
-*(Insert Architecture Diagram Here)*
+### System Architecture Diagram
+
++-------------------+
+|      User         |
++-------------------+
+          |
+          v
++-------------------+
+|  React Frontend   |
++-------------------+
+          |
+   REST API (HTTP)
+          |
+          v
++-------------------+
+| FastAPI Backend   |
++-------------------+
+     |        |
+     |        |
+     v        v
++---------+  +-------------+
+|  FAISS  |  |   SQLite    |
+| Vector  |  |   History   |
++---------+  +-------------+
+     |
+     v
++-------------------+
+|  Groq Llama-3 LLM |
++-------------------+
+
+### System Architecture Diagram
+
+![System Architecture](docs/architecture.png)
+
+This architecture ensures secure communication, efficient retrieval, and accurate AI-based reasoning.
+
 
 ---
 
