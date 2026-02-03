@@ -35,6 +35,12 @@ SQLITE_DB = "history.db"
 os.makedirs(DB_FAISS_PATH, exist_ok=True)
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
+def check_faiss_exists():
+    index_file = os.path.join(DB_FAISS_PATH, "index.faiss")
+    store_file = os.path.join(DB_FAISS_PATH, "index.pkl")
+
+    return os.path.exists(index_file) and os.path.exists(store_file)
+
 # ---------------- MIDDLEWARE ----------------
 app.add_middleware(
     CORSMiddleware,
@@ -245,11 +251,11 @@ async def summarize_document():
         retriever = db.as_retriever(search_kwargs={"k": 10})
 
         prompt = ChatPromptTemplate.from_template("""
-        You are an expert summarizer.
+You are an expert summarizer.
 
-        Context:
-        {context}
-        """)
+Context:
+{context}
+""")
 
         def format_docs(docs):
             return "\n\n".join(d.page_content for d in docs)
@@ -280,7 +286,6 @@ async def summarize_document():
         raise
 
     except Exception as e:
-
         return {"summary": f"SYSTEM ERROR: {str(e)}"}
 
 
@@ -316,16 +321,16 @@ async def ask_question(request: QueryRequest):
         retriever = db.as_retriever(search_kwargs={"k": 5})
 
         prompt = ChatPromptTemplate.from_template("""
-        You are a helpful AI assistant.
+You are a helpful AI assistant.
 
-        Use only the context.
+Use only the context.
 
-        Context:
-        {context}
+Context:
+{context}
 
-        Question:
-        {question}
-        """)
+Question:
+{question}
+""")
 
         def format_docs(docs):
             return "\n\n".join(
@@ -359,5 +364,4 @@ async def ask_question(request: QueryRequest):
         raise
 
     except Exception as e:
-
         return {"answer": f"SYSTEM ERROR: {str(e)}"}
