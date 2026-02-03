@@ -30,3 +30,7 @@ frontend/dist/
 .idea/
 .DS_Store
 Thumbs.db
+
+# Runtime storage (cloud temp data)
+backend/runtime_faiss/
+backend/runtime_uploads/
