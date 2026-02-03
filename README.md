@@ -1,58 +1,165 @@
-**Current Status:** ✅ Live & Deployed
-# 🤖 AjayDataLabs Enterprise AI Document Intelligence System
+🤖 AjayDataLabs – AI-Based PDF Intelligence System
 
-![Status](https://img.shields.io/badge/Status-Production-success)
-![Stack](https://img.shields.io/badge/Tech-FastAPI%20%7C%20React%20%7C%20Groq%20Llama3-blueviolet)
-![Accuracy](https://img.shields.io/badge/RAG%20Accuracy-92%25-green)
+(College Project – Individual Contribution)
 
-### 🚀 Overview
-This is a production-grade **Retrieval-Augmented Generation (RAG)** system designed to democratize access to document data. Unlike standard chatbots, this system ingests complex PDFs (legal, medical, technical) and provides **citation-backed answers** with zero hallucinations.
+📌 Project Status
 
-It utilizes the **Groq LPU Engine** for sub-second inference and **Google GenAI** for semantic vectorization, orchestrating a split-stack architecture deployed on **Railway** (Backend) and **Vercel** (Frontend).
+✅ Completed & Demonstrated
+📅 Submission: February 2026
+👨‍💻 Developer: Ajay Kurchami
 
-### ⚡ Key Features (Business ROI)
-* **Zero-Hallucination Q&A:** Answers are strictly grounded in the uploaded document using Vector Search (FAISS).
-* **Ultra-Low Latency:** Powered by Groq Llama-3 (70B) for instant reasoning.
-* **Audit Trail:** Every answer includes a specific **[Page X] citation**, allowing users to verify facts immediately.
-* **Hybrid Storage:** Chat history is persisted via SQLite, while vector embeddings are managed in high-performance memory.
-* **Accessibility:** Built-in Text-to-Speech synthesis for auditory learning.
+📖 1. Introduction
 
-### 🏗️ System Architecture
-*(Please insert your Architecture Diagram from Page 4 of your report here)*
+This project is an AI-powered document intelligence system that enables users to upload PDF documents and interact with them using natural language.
 
-### 🛠️ Tech Stack
-| Component | Technology |
-| :--- | :--- |
-| **Frontend** | React.js, Tailwind CSS, Axios, Lucide Icons |
-| **Backend API** | Python, FastAPI, Uvicorn (ASGI) |
-| **Vector DB** | FAISS (Facebook AI Similarity Search) |
-| **LLM Core** | Groq Llama-3 (70B) |
-| **Deployment** | Vercel (Client) + Railway (Server) |
+The system allows users to:
 
-### 📸 Screenshots
-*(Add 2-3 screenshots of the UI here)*
+Ask questions from documents
 
-### 🔧 Installation & Setup
-**1. Clone the Repo**
-\`\`\`bash
-git clone https://github.com/ajaykurchami-jpg/enterprise-ai-document-assistant.git
-cd enterprise-ai-document-assistant
-\`\`\`
+Receive citation-backed answers
 
-**2. Backend Setup**
-\`\`\`bash
-cd backend
-pip install -r requirements.txt
-# Create .env file with GROQ_API_KEY and GOOGLE_API_KEY
-uvicorn main:app --reload
-\`\`\`
+Generate summaries
 
-**3. Frontend Setup**
-\`\`\`bash
-cd frontend
-npm install
-npm run dev
-\`\`\`
+Access chat history
 
----
-*Built by **AjayDataLabs**. Open for freelance RAG & GenAI opportunities.*
+The goal is to improve document understanding and reduce manual reading time.
+
+🎯 2. Problem Statement
+
+Reading and analyzing large documents such as reports, manuals, and legal files is time-consuming and inefficient.
+
+Traditional search tools do not provide:
+
+Context-aware answers
+
+Page-level references
+
+Intelligent summarization
+
+This project addresses these limitations using AI-based retrieval and reasoning.
+
+⚙️ 3. Proposed Solution
+
+The system uses a Retrieval-Augmented Generation (RAG) approach.
+
+Workflow:
+
+User uploads a PDF
+
+Text is extracted from the document
+
+Content is split into chunks
+
+Embeddings are generated
+
+Vectors are stored in FAISS
+
+Relevant content is retrieved
+
+AI generates context-based answers
+
+This ensures that responses are based only on the uploaded document.
+
+🏗️ 4. System Architecture
+
+The system follows a client-server model:
+
+Frontend (React): User interface
+
+Backend (FastAPI): Processing and AI logic
+
+Vector Database (FAISS): Document memory
+
+LLM (Groq Llama-3): Reasoning engine
+
+SQLite: Chat and document history
+
+(Insert Architecture Diagram Here)
+
+🛠️ 5. Technology Stack
+Layer	Technology
+Frontend	React.js, CSS, Axios
+Backend	Python, FastAPI, Uvicorn
+AI Models	Groq Llama-3, Google GenAI
+Vector DB	FAISS
+Database	SQLite
+Deployment	Vercel, Railway
+💡 6. Key Features
+
+📄 PDF Upload and Viewer
+
+💬 AI-Powered Question Answering
+
+📑 Document Summarization
+
+🔍 Page-Level Citations
+
+🕓 Chat History Storage
+
+🔊 Text-to-Speech Support
+
+🧑‍💻 7. Individual Contribution
+
+This project was developed independently.
+
+My responsibilities included:
+
+Backend API development
+
+RAG pipeline implementation
+
+Vector database integration
+
+Frontend design and logic
+
+Deployment configuration
+
+Testing and debugging
+
+Documentation preparation
+
+📊 8. Evaluation and Results
+
+Accurate document-based responses
+
+Reduced hallucinations
+
+Fast query processing
+
+Successful deployment
+
+Stable performance during testing
+
+User testing showed improved document comprehension efficiency.
+
+📚 9. Learning Outcomes
+
+Through this project, I learned:
+
+RAG system architecture
+
+AI model integration
+
+REST API development
+
+React frontend development
+
+Cloud deployment
+
+Secure API management
+
+Version control using Git
+
+🚀 10. Future Enhancements
+
+Planned improvements include:
+
+Multi-document querying
+
+OCR support for scanned PDFs
+
+User authentication
+
+Cloud database integration
+
+Advanced analytics dashboard
