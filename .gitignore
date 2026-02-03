@@ -17,6 +17,7 @@ backend/.env
 backend/uploaded_files/
 backend/vectorstore/
 backend/data/
+backend/sample.pdf
 
 # Node
 node_modules/
