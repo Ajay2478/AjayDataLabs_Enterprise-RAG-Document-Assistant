@@ -1,165 +1,160 @@
-🤖 AjayDataLabs – AI-Based PDF Intelligence System
+# 🤖 AjayDataLabs – AI-Based PDF Intelligence System  
+**(College Project – Individual Contribution)**
 
-(College Project – Individual Contribution)
+---
 
-📌 Project Status
+## 📌 Project Status
 
-✅ Completed & Demonstrated
-📅 Submission: February 2026
-👨‍💻 Developer: Ajay Kurchami
+✅ Completed
+📅 Submission: February 2026  
+👨‍💻 Developer: Ajay Kurchami (B.Sc. Data Science)
 
-📖 1. Introduction
+---
+
+## 📖 1. Introduction
 
 This project is an AI-powered document intelligence system that enables users to upload PDF documents and interact with them using natural language.
 
 The system allows users to:
 
-Ask questions from documents
-
-Receive citation-backed answers
-
-Generate summaries
-
-Access chat history
+- Ask questions from documents  
+- Receive citation-backed answers  
+- Generate summaries  
+- Access chat history  
 
 The goal is to improve document understanding and reduce manual reading time.
 
-🎯 2. Problem Statement
+---
+
+## 🎯 2. Problem Statement
 
 Reading and analyzing large documents such as reports, manuals, and legal files is time-consuming and inefficient.
 
 Traditional search tools do not provide:
 
-Context-aware answers
-
-Page-level references
-
-Intelligent summarization
+- Context-aware answers  
+- Page-level references  
+- Intelligent summarization  
 
 This project addresses these limitations using AI-based retrieval and reasoning.
 
-⚙️ 3. Proposed Solution
+---
 
-The system uses a Retrieval-Augmented Generation (RAG) approach.
+## ⚙️ 3. Proposed Solution
 
-Workflow:
+The system uses a **Retrieval-Augmented Generation (RAG)** approach.
 
-User uploads a PDF
+### Workflow
 
-Text is extracted from the document
-
-Content is split into chunks
-
-Embeddings are generated
-
-Vectors are stored in FAISS
-
-Relevant content is retrieved
-
-AI generates context-based answers
+1. User uploads a PDF  
+2. Text is extracted from the document  
+3. Content is split into chunks  
+4. Embeddings are generated  
+5. Vectors are stored in FAISS  
+6. Relevant content is retrieved  
+7. AI generates context-based answers  
 
 This ensures that responses are based only on the uploaded document.
 
-🏗️ 4. System Architecture
+---
+
+## 🏗️ 4. System Architecture
 
 The system follows a client-server model:
 
-Frontend (React): User interface
+- Frontend (React): User interface  
+- Backend (FastAPI): Processing and AI logic  
+- Vector Database (FAISS): Document memory  
+- LLM (Groq Llama-3): Reasoning engine  
+- SQLite: Chat and document history  
 
-Backend (FastAPI): Processing and AI logic
+*(Insert Architecture Diagram Here)*
 
-Vector Database (FAISS): Document memory
+---
 
-LLM (Groq Llama-3): Reasoning engine
+## 🛠️ 5. Technology Stack
 
-SQLite: Chat and document history
+| Layer      | Technology                     |
+|------------|--------------------------------|
+| Frontend   | React.js, CSS, Axios            |
+| Backend    | Python, FastAPI, Uvicorn        |
+| AI Models  | Groq Llama-3, Google GenAI      |
+| Vector DB  | FAISS                           |
+| Database   | SQLite                          |
+| Deployment | Vercel, Railway                 |
 
-(Insert Architecture Diagram Here)
+---
 
-🛠️ 5. Technology Stack
-Layer	Technology
-Frontend	React.js, CSS, Axios
-Backend	Python, FastAPI, Uvicorn
-AI Models	Groq Llama-3, Google GenAI
-Vector DB	FAISS
-Database	SQLite
-Deployment	Vercel, Railway
-💡 6. Key Features
+## 💡 6. Key Features
 
-📄 PDF Upload and Viewer
+- 📄 PDF Upload and Viewer  
+- 💬 AI-Powered Question Answering  
+- 📑 Document Summarization  
+- 🔍 Page-Level Citations  
+- 🕓 Chat History Storage  
+- 🔊 Text-to-Speech Support  
 
-💬 AI-Powered Question Answering
+---
 
-📑 Document Summarization
-
-🔍 Page-Level Citations
-
-🕓 Chat History Storage
-
-🔊 Text-to-Speech Support
-
-🧑‍💻 7. Individual Contribution
+## 🧑‍💻 7. Individual Contribution
 
 This project was developed independently.
 
 My responsibilities included:
 
-Backend API development
+- Backend API development  
+- RAG pipeline implementation  
+- Vector database integration  
+- Frontend design and logic  
+- Deployment configuration  
+- Testing and debugging  
+- Documentation preparation  
 
-RAG pipeline implementation
+---
 
-Vector database integration
+## 📊 8. Evaluation and Results
 
-Frontend design and logic
-
-Deployment configuration
-
-Testing and debugging
-
-Documentation preparation
-
-📊 8. Evaluation and Results
-
-Accurate document-based responses
-
-Reduced hallucinations
-
-Fast query processing
-
-Successful deployment
-
-Stable performance during testing
+- Accurate document-based responses  
+- Reduced hallucinations  
+- Fast query processing  
+- Successful deployment  
+- Stable performance during testing  
 
 User testing showed improved document comprehension efficiency.
 
-📚 9. Learning Outcomes
+---
+
+## 📚 9. Learning Outcomes
 
 Through this project, I learned:
 
-RAG system architecture
+- RAG system architecture  
+- AI model integration  
+- REST API development  
+- React frontend development  
+- Cloud deployment  
+- Secure API management  
+- Version control using Git  
 
-AI model integration
+---
 
-REST API development
-
-React frontend development
-
-Cloud deployment
-
-Secure API management
-
-Version control using Git
-
-🚀 10. Future Enhancements
+## 🚀 10. Future Enhancements
 
 Planned improvements include:
 
-Multi-document querying
+- Multi-document querying  
+- OCR support for scanned PDFs  
+- User authentication  
+- Cloud database integration  
+- Advanced analytics dashboard  
 
-OCR support for scanned PDFs
+---
 
-User authentication
+## 🔧 11. Installation Guide
 
-Cloud database integration
+### Backend Setup
 
-Advanced analytics dashboard
+```bash
+cd backend
+pip install -r requirements.txt
+uvicorn main:app --reload
