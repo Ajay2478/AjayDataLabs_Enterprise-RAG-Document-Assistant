@@ -27,10 +27,10 @@ app = FastAPI(title="AI PDF Assistant API")
 # --------------------------------------------------------------
 
 # Define Paths
-DB_FAISS_PATH = "vectorstore/db_faiss"
+DB_FAISS_PATH = "/tmp/db_faiss"
 UPLOAD_FOLDER = "uploaded_files"
 SQLITE_DB = "history.db"
-os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+os.makedirs("/tmp", exist_ok=True)
 
 app.add_middleware(
     CORSMiddleware,
