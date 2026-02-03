@@ -1,37 +1,41 @@
-from fastapi.staticfiles import StaticFiles
-from fastapi.middleware.cors import CORSMiddleware
 from fastapi import FastAPI, UploadFile, File, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
+
 import os
 import shutil
 import sqlite3
+import tempfile
 from datetime import datetime
 from dotenv import load_dotenv
-import tempfile
 
-# --- IMPORTS ---
+# ---------------- AI IMPORTS ----------------
 from langchain_google_genai import GoogleGenerativeAIEmbeddings
 from langchain_groq import ChatGroq
 from langchain_community.vectorstores import FAISS
+from langchain_community.document_loaders import PDFPlumberLoader
+from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.output_parsers import StrOutputParser
 from langchain_core.runnables import RunnablePassthrough
-from langchain_community.document_loaders import PDFPlumberLoader
-from langchain_text_splitters import RecursiveCharacterTextSplitter
 
-# 1. Setup
+# ---------------- SETUP ----------------
 load_dotenv()
 
-# --- THE FIX IS HERE: Make sure this variable is named 'app' ---
 app = FastAPI(title="AI PDF Assistant API")
-# --------------------------------------------------------------
 
-# Define Paths
-DB_FAISS_PATH = "/tmp/db_faiss"
+# ---------------- PATHS ----------------
+TEMP_DIR = tempfile.gettempdir()
+DB_FAISS_PATH = os.path.join(TEMP_DIR, "db_faiss")
+
 UPLOAD_FOLDER = "uploaded_files"
 SQLITE_DB = "history.db"
-os.makedirs("/tmp", exist_ok=True)
 
+os.makedirs(DB_FAISS_PATH, exist_ok=True)
+os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+
+# ---------------- MIDDLEWARE ----------------
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -39,100 +43,158 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
 app.mount("/static", StaticFiles(directory=UPLOAD_FOLDER), name="static")
 
-# 2. Load Brains
+# ---------------- KEYS ----------------
 google_api_key = os.getenv("GOOGLE_API_KEY")
 groq_api_key = os.getenv("GROQ_API_KEY")
 
 if not google_api_key:
-    print("Warning: GOOGLE_API_KEY not found.")
-if not groq_api_key:
-    print("Warning: GROQ_API_KEY not found. Add it to .env!")
+    print("WARNING: GOOGLE_API_KEY missing")
 
-# HYBRID SETUP:
-embeddings = GoogleGenerativeAIEmbeddings(model="models/text-embedding-004", google_api_key=google_api_key)
-# Updated to the latest supported Groq model
-llm = ChatGroq(model="llama-3.3-70b-versatile", temperature=0.3, groq_api_key=groq_api_key)
-# --- DATABASE SETUP ---
+if not groq_api_key:
+    print("WARNING: GROQ_API_KEY missing")
+
+# ---------------- MODELS ----------------
+embeddings = GoogleGenerativeAIEmbeddings(
+    model="models/text-embedding-004",
+    google_api_key=google_api_key
+)
+
+llm = ChatGroq(
+    model="llama-3.3-70b-versatile",
+    temperature=0.3,
+    groq_api_key=groq_api_key
+)
+
+# ---------------- DATABASE ----------------
 def init_db():
     conn = sqlite3.connect(SQLITE_DB)
     c = conn.cursor()
-    c.execute('''CREATE TABLE IF NOT EXISTS documents 
-                 (id INTEGER PRIMARY KEY AUTOINCREMENT, filename TEXT, upload_date TEXT)''')
-    c.execute('''CREATE TABLE IF NOT EXISTS chats 
-                 (id INTEGER PRIMARY KEY AUTOINCREMENT, role TEXT, content TEXT, timestamp TEXT)''')
+
+    c.execute("""
+        CREATE TABLE IF NOT EXISTS documents (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            filename TEXT,
+            upload_date TEXT
+        )
+    """)
+
+    c.execute("""
+        CREATE TABLE IF NOT EXISTS chats (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            role TEXT,
+            content TEXT,
+            timestamp TEXT
+        )
+    """)
+
     conn.commit()
     conn.close()
 
+
 init_db()
 
-# 3. Models
+# ---------------- REQUEST MODEL ----------------
 class QueryRequest(BaseModel):
     question: str
 
-# 4. Endpoints
+
+# ---------------- HELPERS ----------------
+def check_faiss_exists():
+    return os.path.exists(os.path.join(DB_FAISS_PATH, "index.faiss"))
+
+
+# ---------------- ROUTES ----------------
+
 @app.get("/")
 def home():
     return {"message": "AI PDF API Running on Groq Llama-3!"}
 
+
 @app.get("/documents")
 def get_documents():
+
     conn = sqlite3.connect(SQLITE_DB)
     c = conn.cursor()
+
     c.execute("SELECT filename, upload_date FROM documents ORDER BY id DESC")
-    docs = [{"filename": row[0], "date": row[1]} for row in c.fetchall()]
+
+    docs = [
+        {"filename": row[0], "date": row[1]}
+        for row in c.fetchall()
+    ]
+
     conn.close()
+
     return {"documents": docs}
 
+
 @app.get("/history")
-def get_chat_history():
+def get_history():
+
     conn = sqlite3.connect(SQLITE_DB)
     c = conn.cursor()
+
     c.execute("SELECT role, content FROM chats ORDER BY id ASC")
-    history = [{"type": row[0], "text": row[1]} for row in c.fetchall()]
+
+    history = [
+        {"type": row[0], "text": row[1]}
+        for row in c.fetchall()
+    ]
+
     conn.close()
+
     return {"history": history}
 
+
 @app.delete("/clear")
-def clear_history():
+def clear_all():
+
     conn = sqlite3.connect(SQLITE_DB)
     c = conn.cursor()
+
     c.execute("DELETE FROM chats")
-    c.execute("DELETE FROM documents") 
+    c.execute("DELETE FROM documents")
+
     conn.commit()
     conn.close()
-    return {"message": "History Cleared"}
 
-import tempfile
+    return {"message": "History cleared"}
 
+
+# ---------------- UPLOAD ----------------
 
 @app.post("/upload")
 async def upload_document(file: UploadFile = File(...)):
 
     try:
-        # Create temporary file (works on cloud)
+
+        # Save to temp file
         with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as tmp:
             shutil.copyfileobj(file.file, tmp)
             temp_path = tmp.name
 
-        # Load PDF from temp file
+        # Load PDF
         loader = PDFPlumberLoader(temp_path)
         docs = loader.load()
 
-        # Remove temp file
         os.remove(temp_path)
 
-        # Split text
-        text_splitter = RecursiveCharacterTextSplitter(
+        # Chunking
+        splitter = RecursiveCharacterTextSplitter(
             chunk_size=1000,
             chunk_overlap=200
         )
-        chunks = text_splitter.split_documents(docs)
 
-        # Create vector DB
+        chunks = splitter.split_documents(docs)
+
+        # Create FAISS
         db = FAISS.from_documents(chunks, embeddings)
         db.save_local(DB_FAISS_PATH)
+
+        print("FAISS saved at:", DB_FAISS_PATH)
 
         # Save metadata
         conn = sqlite3.connect(SQLITE_DB)
@@ -152,88 +214,150 @@ async def upload_document(file: UploadFile = File(...)):
         }
 
     except Exception as e:
+
         print("UPLOAD ERROR:", e)
-        raise HTTPException(status_code=500, detail="Upload failed")
+
+        raise HTTPException(
+            status_code=500,
+            detail="Upload failed"
+        )
+
+
+# ---------------- SUMMARIZE ----------------
 
 @app.post("/summarize")
 async def summarize_document():
+
     try:
-        db = FAISS.load_local(DB_FAISS_PATH, embeddings, allow_dangerous_deserialization=True)
-        retriever = db.as_retriever(search_kwargs={'k': 10}) 
-        
+
+        if not check_faiss_exists():
+            raise HTTPException(
+                status_code=400,
+                detail="Please upload a document first."
+            )
+
+        db = FAISS.load_local(
+            DB_FAISS_PATH,
+            embeddings,
+            allow_dangerous_deserialization=True
+        )
+
+        retriever = db.as_retriever(search_kwargs={"k": 10})
+
         prompt = ChatPromptTemplate.from_template("""
-        You are an expert summarizer. 
-        Read the following context and provide a concise summary.
-        Context: {context}
+        You are an expert summarizer.
+
+        Context:
+        {context}
         """)
 
         def format_docs(docs):
-            return "\n\n".join(doc.page_content for doc in docs)
+            return "\n\n".join(d.page_content for d in docs)
 
-        chain = ({"context": retriever | format_docs} | prompt | llm | StrOutputParser())
-        summary = chain.invoke("Give me a comprehensive overview") 
-        
+        chain = (
+            {"context": retriever | format_docs}
+            | prompt
+            | llm
+            | StrOutputParser()
+        )
+
+        summary = chain.invoke("Give full summary")
+
         conn = sqlite3.connect(SQLITE_DB)
         c = conn.cursor()
-        c.execute("INSERT INTO chats (role, content, timestamp) VALUES (?, ?, ?)", 
-                  ("ai", summary, datetime.now().strftime("%Y-%m-%d %H:%M:%S")))
+
+        c.execute(
+            "INSERT INTO chats (role, content, timestamp) VALUES (?, ?, ?)",
+            ("ai", summary, datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
+        )
+
         conn.commit()
         conn.close()
 
         return {"summary": summary}
 
+    except HTTPException:
+        raise
+
     except Exception as e:
-        return {"summary": f"SYSTEM ERROR (Summarize): {str(e)}"}
+
+        return {"summary": f"SYSTEM ERROR: {str(e)}"}
+
+
+# ---------------- QUERY ----------------
 
 @app.post("/query")
 async def ask_question(request: QueryRequest):
+
     try:
+
+        if not check_faiss_exists():
+            raise HTTPException(
+                status_code=400,
+                detail="Please upload a document first."
+            )
+
         conn = sqlite3.connect(SQLITE_DB)
         c = conn.cursor()
-        c.execute("INSERT INTO chats (role, content, timestamp) VALUES (?, ?, ?)", 
-                  ("user", request.question, datetime.now().strftime("%Y-%m-%d %H:%M:%S")))
+
+        c.execute(
+            "INSERT INTO chats (role, content, timestamp) VALUES (?, ?, ?)",
+            ("user", request.question, datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
+        )
+
         conn.commit()
-        
-        db = FAISS.load_local(DB_FAISS_PATH, embeddings, allow_dangerous_deserialization=True)
-        retriever = db.as_retriever(search_kwargs={'k': 5})
+
+        db = FAISS.load_local(
+            DB_FAISS_PATH,
+            embeddings,
+            allow_dangerous_deserialization=True
+        )
+
+        retriever = db.as_retriever(search_kwargs={"k": 5})
 
         prompt = ChatPromptTemplate.from_template("""
         You are a helpful AI assistant.
-        Answer the question based on the following context.
-        
-        RULES:
-        1. If the answer is found, cite the page number like [Page X].
-        2. If the user asks for a SUMMARY, TRANSLATION, or OVERVIEW, ignore the "not found" rule and generate the best response possible from the context.
-        3. If the user asks for a specific fact (e.g., "What is the email?") and it is NOT in the context, output EXACTLY: "polite_fallback_trigger"
-        4. Answer in the same language as the question (e.g., Hindi for Hindi).
+
+        Use only the context.
 
         Context:
         {context}
 
-        Question: {question}
+        Question:
+        {question}
         """)
-        
+
         def format_docs(docs):
-            return "\n\n".join(f"[Page {doc.metadata.get('page', 0) + 1}]: {doc.page_content}" for doc in docs)
+            return "\n\n".join(
+                f"[Page {d.metadata.get('page',0)+1}]: {d.page_content}"
+                for d in docs
+            )
 
-        rag_chain = ({"context": retriever | format_docs, "question": RunnablePassthrough()} | prompt | llm | StrOutputParser())
-        
-        raw_answer = rag_chain.invoke(request.question)
-        
-        clean_answer = raw_answer.strip().lower()
-        negative_triggers = ["polite_fallback_trigger", "i don't know", "not mentioned", "no information", "cannot answer"]
+        rag_chain = (
+            {
+                "context": retriever | format_docs,
+                "question": RunnablePassthrough()
+            }
+            | prompt
+            | llm
+            | StrOutputParser()
+        )
 
-        if any(trigger in clean_answer for trigger in negative_triggers):
-            final_answer = "I checked the document for you, but it doesn't seem to mention that. Is there a different section you'd like me to summarize?"
-        else:
-            final_answer = raw_answer
+        answer = rag_chain.invoke(request.question)
 
-        c.execute("INSERT INTO chats (role, content, timestamp) VALUES (?, ?, ?)", 
-                  ("ai", final_answer, datetime.now().strftime("%Y-%m-%d %H:%M:%S")))
+        c.execute(
+            "INSERT INTO chats (role, content, timestamp) VALUES (?, ?, ?)",
+            ("ai", answer, datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
+        )
+
         conn.commit()
         conn.close()
 
-        return {"answer": final_answer}
+        return {"answer": answer}
+
+    except HTTPException:
+        raise
 
     except Exception as e:
-        return {"answer": f"SYSTEM ERROR (Query): {str(e)}"}
+
+        return {"answer": f"SYSTEM ERROR: {str(e)}"}
