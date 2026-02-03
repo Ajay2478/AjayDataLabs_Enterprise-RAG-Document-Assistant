@@ -1,97 +1,109 @@
 import os
+import tempfile
 from dotenv import load_dotenv
-from langchain_google_genai import ChatGoogleGenerativeAI, GoogleGenerativeAIEmbeddings
+
+from langchain_google_genai import GoogleGenerativeAIEmbeddings
+from langchain_groq import ChatGroq
 from langchain_community.vectorstores import FAISS
+
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.output_parsers import StrOutputParser
 from langchain_core.runnables import RunnablePassthrough
 
-# 1. Load API Key
+
+# Load keys
 load_dotenv()
-api_key = os.getenv("GOOGLE_API_KEY")
 
-if not api_key:
-    print("Error: GOOGLE_API_KEY not found. Check your .env file.")
+GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY")
+GROQ_API_KEY = os.getenv("GROQ_API_KEY")
+
+if not GOOGLE_API_KEY or not GROQ_API_KEY:
+    print("Missing API keys in .env")
     exit()
 
-# 2. Setup Memory (Vector DB)
-DB_FAISS_PATH = "vectorstore/db_faiss"
 
-print("--- Loading Vector DB ---")
-# Using the standard embedding model (usually available to everyone)
-embeddings = GoogleGenerativeAIEmbeddings(model="models/text-embedding-004", google_api_key=api_key)
+# FAISS path (same as main.py)
+TEMP_DIR = tempfile.gettempdir()
+DB_FAISS_PATH = os.path.join(TEMP_DIR, "db_faiss")
 
-try:
-    db = FAISS.load_local(DB_FAISS_PATH, embeddings, allow_dangerous_deserialization=True)
-except Exception as e:
-    print(f"Error loading DB: {e}")
-    print("TIP: Did you run ingest.py? Make sure your ingestion also uses GoogleEmbeddings!")
+
+# Embeddings
+embeddings = GoogleGenerativeAIEmbeddings(
+    model="models/text-embedding-004",
+    google_api_key=GOOGLE_API_KEY
+)
+
+
+# Load DB
+print("Loading vector DB...")
+
+if not os.path.exists(os.path.join(DB_FAISS_PATH, "index.faiss")):
+    print("No vector DB found. Upload PDF first.")
     exit()
 
-# 3. Setup Brain (THE FIX IS HERE)
-# We are using a model CONFIRMED to be in your list:
-# Switch to Flash Lite to bypass the 2.5 Daily Limit
-# Use Flash Lite - it is fast and has a separate quota bucket
-llm = ChatGroq(model="llama3-8b-8192", temperature=0.3, groq_api_key=groq_api_key)
+db = FAISS.load_local(
+    DB_FAISS_PATH,
+    embeddings,
+    allow_dangerous_deserialization=True
+)
 
-# 4. Define Helper
-def format_docs(docs):
-    return "\n\n".join(f"[Page {doc.metadata.get('page', 0) + 1}]: {doc.page_content}" for doc in docs)
 
-# 5. Create Chain
-template = """
-You are a helpful AI assistant.
-Answer the question based ONLY on the following context.
+# LLM
+llm = ChatGroq(
+    model="llama-3.3-70b-versatile",
+    temperature=0.3,
+    groq_api_key=GROQ_API_KEY
+)
 
-STRICT RULES:
-1. If the answer is found, cite the page number like [Page X].
-2. If the answer is NOT in the context, output EXACTLY this string: 
-   "polite_fallback_trigger"
+
+# Prompt
+prompt = ChatPromptTemplate.from_template("""
+Answer strictly from context.
 
 Context:
 {context}
 
-Question: {question}
-"""
+Question:
+{question}
+""")
 
-prompt = ChatPromptTemplate.from_template(template)
 
-retriever = db.as_retriever(search_kwargs={'k': 5})
+# Retriever
+retriever = db.as_retriever(search_kwargs={"k": 5})
 
+
+def format_docs(docs):
+    return "\n\n".join(
+        f"[Page {d.metadata.get('page',0)+1}]: {d.page_content}"
+        for d in docs
+    )
+
+
+# Chain
 rag_chain = (
-    {"context": retriever | format_docs, "question": RunnablePassthrough()}
+    {
+        "context": retriever | format_docs,
+        "question": RunnablePassthrough()
+    }
     | prompt
     | llm
     | StrOutputParser()
 )
 
-# 6. Run Loop
-if __name__ == "__main__":
-    print("\n--- AI PDF Assistant Ready! (Type 'exit' to quit) ---")
-    while True:
-        user_input = input("\nAsk a question: ")
-        if user_input.lower() == "exit":
-            break
-        
-        try:
-            raw_answer = rag_chain.invoke(user_input)
-            
-            clean_answer = raw_answer.strip().lower()
-            negative_triggers = [
-                "polite_fallback_trigger",
-                "i don't know",
-                "not mentioned",
-                "no information",
-                "cannot answer"
-            ]
 
-            if any(trigger in clean_answer for trigger in negative_triggers):
-                final_answer = "I checked the document for you, but it doesn't seem to mention that. Is there a different section you'd like me to summarize?"
-            else:
-                final_answer = raw_answer
+# CLI Loop
+print("\n--- AI PDF Assistant Ready (CLI Mode) ---")
 
-            print("\n>> AI Answer:")
-            print(final_answer)
+while True:
 
-        except Exception as e:
-            print(f"Error: {e}")
+    q = input("\nAsk: ")
+
+    if q.lower() == "exit":
+        break
+
+    try:
+        answer = rag_chain.invoke(q)
+        print("\n>> Answer:\n", answer)
+
+    except Exception as e:
+        print("Error:", e)
