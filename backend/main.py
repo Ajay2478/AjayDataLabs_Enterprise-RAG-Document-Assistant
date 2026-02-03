@@ -6,7 +6,6 @@ from pydantic import BaseModel
 import os
 import shutil
 import sqlite3
-import tempfile
 from datetime import datetime
 from dotenv import load_dotenv
 
@@ -20,28 +19,40 @@ from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.output_parsers import StrOutputParser
 from langchain_core.runnables import RunnablePassthrough
 
+
 # ---------------- SETUP ----------------
 load_dotenv()
 
 app = FastAPI(title="AI PDF Assistant API")
 
-# ---------------- PATHS ----------------
-TEMP_DIR = tempfile.gettempdir()
-DB_FAISS_PATH = os.path.join(TEMP_DIR, "db_faiss")
 
-UPLOAD_FOLDER = "uploaded_files"
-SQLITE_DB = "history.db"
+# ---------------- PATHS (CLOUD SAFE) ----------------
 
-os.makedirs(DB_FAISS_PATH, exist_ok=True)
-os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+
+UPLOAD_DIR = os.path.join(BASE_DIR, "runtime_uploads")
+FAISS_DIR = os.path.join(BASE_DIR, "runtime_faiss")
+
+SQLITE_DB = os.path.join(BASE_DIR, "history.db")
+
+os.makedirs(UPLOAD_DIR, exist_ok=True)
+os.makedirs(FAISS_DIR, exist_ok=True)
+
+DB_FAISS_PATH = FAISS_DIR
+UPLOAD_FOLDER = UPLOAD_DIR
+
+
+# ---------------- HELPERS ----------------
 
 def check_faiss_exists():
-    index_file = os.path.join(DB_FAISS_PATH, "index.faiss")
-    store_file = os.path.join(DB_FAISS_PATH, "index.pkl")
+    return (
+        os.path.exists(os.path.join(DB_FAISS_PATH, "index.faiss")) and
+        os.path.exists(os.path.join(DB_FAISS_PATH, "index.pkl"))
+    )
 
-    return os.path.exists(index_file) and os.path.exists(store_file)
 
 # ---------------- MIDDLEWARE ----------------
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -52,7 +63,9 @@ app.add_middleware(
 
 app.mount("/static", StaticFiles(directory=UPLOAD_FOLDER), name="static")
 
+
 # ---------------- KEYS ----------------
+
 google_api_key = os.getenv("GOOGLE_API_KEY")
 groq_api_key = os.getenv("GROQ_API_KEY")
 
@@ -62,7 +75,9 @@ if not google_api_key:
 if not groq_api_key:
     print("WARNING: GROQ_API_KEY missing")
 
+
 # ---------------- MODELS ----------------
+
 embeddings = GoogleGenerativeAIEmbeddings(
     model="models/text-embedding-004",
     google_api_key=google_api_key
@@ -74,8 +89,11 @@ llm = ChatGroq(
     groq_api_key=groq_api_key
 )
 
+
 # ---------------- DATABASE ----------------
+
 def init_db():
+
     conn = sqlite3.connect(SQLITE_DB)
     c = conn.cursor()
 
@@ -102,14 +120,11 @@ def init_db():
 
 init_db()
 
+
 # ---------------- REQUEST MODEL ----------------
+
 class QueryRequest(BaseModel):
     question: str
-
-
-# ---------------- HELPERS ----------------
-def check_faiss_exists():
-    return os.path.exists(os.path.join(DB_FAISS_PATH, "index.faiss"))
 
 
 # ---------------- ROUTES ----------------
@@ -177,18 +192,26 @@ async def upload_document(file: UploadFile = File(...)):
 
     try:
 
-        # Save to temp file
-        with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as tmp:
-            shutil.copyfileobj(file.file, tmp)
-            temp_path = tmp.name
+        print("Starting upload...")
+
+        file_path = os.path.join(UPLOAD_FOLDER, file.filename)
+
+        # Save PDF
+        with open(file_path, "wb") as buffer:
+            shutil.copyfileobj(file.file, buffer)
+
+        print("Saved file:", file_path)
 
         # Load PDF
-        loader = PDFPlumberLoader(temp_path)
+        loader = PDFPlumberLoader(file_path)
         docs = loader.load()
 
-        os.remove(temp_path)
+        if not docs:
+            raise Exception("No text extracted")
 
-        # Chunking
+        print("Pages:", len(docs))
+
+        # Split
         splitter = RecursiveCharacterTextSplitter(
             chunk_size=1000,
             chunk_overlap=200
@@ -196,11 +219,14 @@ async def upload_document(file: UploadFile = File(...)):
 
         chunks = splitter.split_documents(docs)
 
+        print("Chunks:", len(chunks))
+
         # Create FAISS
         db = FAISS.from_documents(chunks, embeddings)
+
         db.save_local(DB_FAISS_PATH)
 
-        print("FAISS saved at:", DB_FAISS_PATH)
+        print("FAISS saved:", DB_FAISS_PATH)
 
         # Save metadata
         conn = sqlite3.connect(SQLITE_DB)
@@ -215,17 +241,17 @@ async def upload_document(file: UploadFile = File(...)):
         conn.close()
 
         return {
-            "filename": file.filename,
-            "status": "Indexed Successfully"
+            "status": "success",
+            "filename": file.filename
         }
 
     except Exception as e:
 
-        print("UPLOAD ERROR:", e)
+        print("UPLOAD FAILED:", e)
 
         raise HTTPException(
             status_code=500,
-            detail="Upload failed"
+            detail=str(e)
         )
 
 
