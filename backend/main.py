@@ -7,6 +7,7 @@ import shutil
 import sqlite3
 from datetime import datetime
 from dotenv import load_dotenv
+import tempfile
 
 # --- IMPORTS ---
 from langchain_google_genai import GoogleGenerativeAIEmbeddings
@@ -103,28 +104,56 @@ def clear_history():
     conn.close()
     return {"message": "History Cleared"}
 
+import tempfile
+
+
 @app.post("/upload")
 async def upload_document(file: UploadFile = File(...)):
-    file_path = os.path.join(UPLOAD_FOLDER, file.filename)
-    with open(file_path, "wb") as buffer:
-        shutil.copyfileobj(file.file, buffer)
 
-    loader = PDFPlumberLoader(file_path)
-    docs = loader.load()
-    text_splitter = RecursiveCharacterTextSplitter(chunk_size=500, chunk_overlap=50)
-    chunks = text_splitter.split_documents(docs)
+    try:
+        # Create temporary file (works on cloud)
+        with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as tmp:
+            shutil.copyfileobj(file.file, tmp)
+            temp_path = tmp.name
 
-    db = FAISS.from_documents(chunks, embeddings)
-    db.save_local(DB_FAISS_PATH)
-    
-    conn = sqlite3.connect(SQLITE_DB)
-    c = conn.cursor()
-    c.execute("INSERT INTO documents (filename, upload_date) VALUES (?, ?)", 
-              (file.filename, datetime.now().strftime("%Y-%m-%d %H:%M:%S")))
-    conn.commit()
-    conn.close()
-    
-    return {"filename": file.filename, "status": "Indexed"}
+        # Load PDF from temp file
+        loader = PDFPlumberLoader(temp_path)
+        docs = loader.load()
+
+        # Remove temp file
+        os.remove(temp_path)
+
+        # Split text
+        text_splitter = RecursiveCharacterTextSplitter(
+            chunk_size=1000,
+            chunk_overlap=200
+        )
+        chunks = text_splitter.split_documents(docs)
+
+        # Create vector DB
+        db = FAISS.from_documents(chunks, embeddings)
+        db.save_local(DB_FAISS_PATH)
+
+        # Save metadata
+        conn = sqlite3.connect(SQLITE_DB)
+        c = conn.cursor()
+
+        c.execute(
+            "INSERT INTO documents (filename, upload_date) VALUES (?, ?)",
+            (file.filename, datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
+        )
+
+        conn.commit()
+        conn.close()
+
+        return {
+            "filename": file.filename,
+            "status": "Indexed Successfully"
+        }
+
+    except Exception as e:
+        print("UPLOAD ERROR:", e)
+        raise HTTPException(status_code=500, detail="Upload failed")
 
 @app.post("/summarize")
 async def summarize_document():
